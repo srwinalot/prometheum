@@ -1,0 +1,46 @@
+[Unit]
+Description=Dismetheum Router/NAS Cloud Storage Service
+Documentation=https://dismetheum.io/docs
+After=network.target network-online.target dnsmasq.service smbd.service nfsd.service netatalk.service
+Wants=network-online.target dnsmasq.service smbd.service nfsd.service netatalk.service
+Requires=network-online.target
+
+[Service]
+Type=simple
+User=prometheum
+Group=prometheum
+Environment=PYTHONUNBUFFERED=1
+Environment=CONFIG_DIR=/etc/dismetheum
+Environment=DATA_DIR=/var/lib/dismetheum
+Environment=LOG_DIR=/var/log/dismetheum
+Environment=ROUTER_MODE=true
+WorkingDirectory=/opt/prometheum
+
+# Start the application
+ExecStartPre=/bin/mkdir -p ${LOG_DIR}
+ExecStart=/opt/prometheum/venv/bin/python -m dismetheum.server
+Restart=always
+RestartSec=5
+StandardOutput=append:${LOG_DIR}/service.log
+StandardError=append:${LOG_DIR}/error.log
+
+# Limits and resource control
+TimeoutStartSec=60
+TimeoutStopSec=60
+LimitNOFILE=65536
+MemoryLimit=2G
+
+# Security settings - Less restrictive due to router functionality
+PrivateTmp=true
+ProtectHome=true
+# Allow network administration capabilities
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW CAP_SYS_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+ReadWritePaths=/var/lib/dismetheum /var/log/dismetheum /etc/dismetheum
+
+# Run a post-stop cleanup script if needed
+ExecStopPost=/opt/prometheum/scripts/cleanup_router.sh
+
+[Install]
+WantedBy=multi-user.target
+

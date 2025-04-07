@@ -1,0 +1,92 @@
+[Unit]
+Description=Prometheum Personal Cloud Storage Service
+Documentation=https://prometheum.io/docs
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=prometheum
+Group=prometheum
+Environment=PYTHONUNBUFFERED=1
+Environment=CONFIG_DIR=/etc/prometheum
+Environment=DATA_DIR=/var/lib/prometheum
+Environment=LOG_DIR=/var/log/prometheum
+WorkingDirectory=/opt/prometheum
+
+# Start the application
+ExecStartPre=/bin/mkdir -p ${LOG_DIR}
+ExecStart=/opt/prometheum/venv/bin/python -m prometheum.server
+Restart=always
+RestartSec=3
+StandardOutput=append:${LOG_DIR}/service.log
+StandardError=append:${LOG_DIR}/error.log
+
+# Limits and resource control
+TimeoutStartSec=30
+TimeoutStopSec=30
+LimitNOFILE=65536
+MemoryLimit=1G
+
+# Security settings
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/prometheum /var/log/prometheum
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target
+
+[Unit]
+Description=Prometheum Personal Cloud Storage System
+Documentation=https://prometheum.io/docs
+After=network.target network-online.target
+Wants=network-online.target
+# Dismetheum components if running in router mode
+After=dnsmasq.service
+Wants=dnsmasq.service
+
+[Service]
+Type=simple
+User=prometheum
+Group=prometheum
+# The configuration will determine if standard or router mode is used
+EnvironmentFile=-/etc/prometheum/env
+EnvironmentFile=-/etc/dismetheum/env
+WorkingDirectory=/opt/prometheum
+
+# ExecStartPre to check prerequisites and create runtime directories
+ExecStartPre=/opt/prometheum/scripts/prestart.sh
+# Main service command
+ExecStart=/opt/prometheum/venv/bin/python -m prometheum.app
+# Clean up on exit
+ExecStopPost=/opt/prometheum/scripts/poststop.sh
+
+# Restart configuration
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Resource limits
+CPUQuota=80%
+MemoryLimit=1G
+LimitNOFILE=65536
+
+# Security settings
+# Dismetheum router needs more capabilities, standard mode is more restrictive
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/prometheum /var/lib/dismetheum /var/log/prometheum /var/log/dismetheum
+RuntimeDirectory=prometheum dismetheum
+
+[Install]
+WantedBy=multi-user.target
+
