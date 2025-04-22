@@ -1,0 +1,45 @@
+[Unit]
+Description=Prometheum NAS Router OS Storage Management Service
+Documentation=https://github.com/prometheum/docs
+After=network.target postgresql.service
+Before=prometheum-api.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/prometheum
+EnvironmentFile=-/etc/prometheum/storage.env
+ExecStart=/usr/bin/python3 -m src.storage.manager
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=prometheum-storage
+TimeoutStartSec=60
+TimeoutStopSec=60
+
+# Storage service needs additional capabilities
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_RESOURCE CAP_MKNOD CAP_IPC_LOCK
+AmbientCapabilities=CAP_SYS_ADMIN CAP_SYS_RESOURCE CAP_MKNOD CAP_IPC_LOCK
+
+# Create necessary directories
+ExecStartPre=/bin/mkdir -p /var/lib/prometheum/storage
+ExecStartPre=/bin/mkdir -p /var/run/prometheum
+ExecStartPre=/bin/chmod 755 /var/run/prometheum
+
+# Storage service needs less restrictive security settings
+# due to need to manage mounts and storage devices
+PrivateTmp=true
+ProtectHome=true
+ProtectKernelTunables=false
+ProtectControlGroups=false
+ProtectSystem=false
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target
+# API service depends on this service
+RequiredBy=prometheum-api.service
+

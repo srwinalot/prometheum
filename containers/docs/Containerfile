@@ -1,0 +1,40 @@
+# Base image
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir --upgrade pip && \
+    grep -E "sphinx" /app/requirements.txt > /app/docs-requirements.txt && \
+    pip install --no-cache-dir -r /app/docs-requirements.txt && \
+    pip install --no-cache-dir sphinx-rtd-theme sphinx-autobuild
+
+# Copy documentation source files
+COPY docs/ /app/docs/
+COPY README.md /app/
+COPY PROJECT_GUIDELINES.md /app/docs/
+COPY IMPLEMENTATION_STATUS.md /app/docs/
+
+# Build the documentation
+RUN mkdir -p /app/docs/_build && \
+    cd /app/docs && \
+    sphinx-build -b html . _build/html
+
+# Install a lightweight web server
+RUN pip install --no-cache-dir flask
+
+# Copy the web server script
+COPY containers/docs/serve.py /app/serve.py || echo 'from flask import Flask, send_from_directory\n\napp = Flask(__name__)\n\n@app.route("/")\ndef index():\n    return send_from_directory("/app/docs/_build/html", "index.html")\n\n@app.route("/<path:path>")\ndef serve_docs(path):\n    return send_from_directory("/app/docs/_build/html", path)\n\nif __name__ == "__main__":\n    app.run(host="0.0.0.0", port=8080)' > /app/serve.py
+
+# Expose port for documentation server
+EXPOSE 8080
+
+# Command to run the documentation server
+CMD ["python", "serve.py"]
+

@@ -1,0 +1,33 @@
+[Unit]
+Description=Prometheum NAS Router OS API Service
+Documentation=https://github.com/prometheum/docs
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=prometheum
+Group=prometheum
+WorkingDirectory=/opt/prometheum
+EnvironmentFile=-/etc/prometheum/api.env
+ExecStart=/usr/bin/python3 -m src.server
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=prometheum-api
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# Security settings
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
+
+[Install]
+WantedBy=multi-user.target
+

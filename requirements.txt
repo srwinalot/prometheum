@@ -1,0 +1,22 @@
+# Minimized Dependencies
+
+# Core Requirements
+python>=3.9.0
+fastapi>=0.95.0
+uvicorn>=0.21.0
+python-jose>=3.3.0      # JWT support
+passlib>=1.7.4          # Password hashing
+python-multipart>=0.0.6 # Form parsing
+
+# Storage Management
+pydantic>=2.0.0
+
+# AI Integration (Optional)
+llama-cpp-python>=0.1.0
+sentence-transformers>=2.2.0
+
+# Testing
+pytest>=7.3.1
+
+# Documentation
+sphinx>=7.0.0

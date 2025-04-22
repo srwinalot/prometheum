@@ -1,0 +1,38 @@
+[Unit]
+Description=Prometheum NAS Router OS Health Monitoring Service
+Documentation=https://github.com/prometheum/docs
+After=network.target prometheum-api.service prometheum-storage.service
+Requires=prometheum-api.service prometheum-storage.service
+
+[Service]
+Type=simple
+User=prometheum
+Group=prometheum
+WorkingDirectory=/opt/prometheum
+EnvironmentFile=-/etc/prometheum/health.env
+ExecStart=/usr/bin/python3 -m src.utils.health_monitor
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=prometheum-health
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# Health service can restart other services
+ExecStartPre=/bin/mkdir -p /var/run/prometheum
+ExecStartPre=/bin/chown prometheum:prometheum /var/run/prometheum
+ExecStartPre=/bin/chmod 755 /var/run/prometheum
+
+# Security settings
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
+
+[Install]
+WantedBy=multi-user.target
+

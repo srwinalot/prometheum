@@ -1,0 +1,52 @@
+# Base image - using a more robust base for ML workloads
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    OMP_NUM_THREADS=4 \
+    MKL_NUM_THREADS=4
+
+# Install system dependencies required for AI libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    libopenblas-dev \
+    ninja-build \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for AI processing
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir --upgrade pip && \
+    grep -E "llama-cpp-python|sentence-transformers|pydantic" /app/requirements.txt > /app/ai-requirements.txt && \
+    pip install --no-cache-dir -r /app/ai-requirements.txt && \
+    # Install optimized AI libraries
+    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# Copy AI-related source code
+COPY src/prometheum/ai /app/src/prometheum/ai
+COPY src/storage/ai /app/src/storage/ai
+COPY src/utils /app/src/utils
+
+# Create directories for model storage
+RUN mkdir -p /app/models /app/data
+
+# Set up configuration
+RUN mkdir -p /app/config
+COPY config/ai.env /app/config/ || echo "No AI config found, using defaults"
+
+# Volume for model persistence
+VOLUME ["/app/models", "/app/data"]
+
+# Expose AI service port
+EXPOSE 8002
+
+# Run the AI service with resource constraints specified at runtime
+CMD ["python", "-m", "src.prometheum.ai.service", "--host", "0.0.0.0", "--port", "8002"]
+

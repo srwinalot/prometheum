@@ -1,0 +1,43 @@
+# Base image
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Install system dependencies for storage operations
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    lsb-release \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir --upgrade pip && \
+    grep -E "pydantic" /app/requirements.txt > /app/storage-requirements.txt && \
+    pip install --no-cache-dir -r /app/storage-requirements.txt
+
+# Copy storage-related code
+COPY src/storage /app/src/storage
+COPY src/utils /app/src/utils
+
+# Create volume mount points
+RUN mkdir -p /data/volumes /data/backup /data/config
+
+# Set up configuration
+RUN mkdir -p /app/config
+COPY config/storage.env /app/config/ || echo "No storage config found, using defaults"
+
+# Volume configuration
+VOLUME ["/data/volumes", "/data/backup", "/data/config"]
+
+# Expose storage service port
+EXPOSE 8001
+
+# Run the storage service
+CMD ["python", "-m", "src.storage.manager", "--host", "0.0.0.0", "--port", "8001"]
+

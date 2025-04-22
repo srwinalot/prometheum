@@ -1,0 +1,32 @@
+# Base image
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Install dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir --upgrade pip && \
+    grep -E "fastapi|uvicorn|python-jose|passlib|python-multipart|pydantic" /app/requirements.txt > /app/api-requirements.txt && \
+    pip install --no-cache-dir -r /app/api-requirements.txt
+
+# Copy application code
+COPY src/api /app/src/api
+COPY src/utils /app/src/utils
+COPY src/server.py /app/src/
+
+# Set up configuration
+RUN mkdir -p /app/config
+COPY config/api.env /app/config/ || echo "No API config found, using defaults"
+
+# Expose the application port
+EXPOSE 8000
+
+# Run the application
+CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
