@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 
-from .routes import auth, storage, health, system
+from .routes import auth, storage, health, system, backup
 from .dependencies import get_health_monitor
 from ..utils.config import load_config
 
@@ -110,6 +110,12 @@ def create_app() -> FastAPI:
         system.router,
         prefix="/api/system",
         tags=["System"]
+    )
+    
+    app.include_router(
+        backup.router,
+        prefix="/api/backup",
+        tags=["Backup"]
     )
     
     # API documentation

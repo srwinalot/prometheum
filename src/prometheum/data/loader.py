@@ -18,7 +18,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from prometheum.core.base import DataContainer, DataFrameContainer, DataLoader
+from prometheum.core.base import DataContainer, DataFrameContainer, DataLoader, Identifiable, Configurable
 from prometheum.core.exceptions import (
     ConfigurationError, 
     DataLoadError, 
@@ -44,7 +44,8 @@ class FileDataLoader(DataLoader[Any]):
         Raises:
             ConfigurationError: If filepath is invalid
         """
-        super().__init__(config)
+        Identifiable.__init__(self)
+        Configurable.__init__(self, config)
         self.filepath = Path(filepath)
         if not isinstance(filepath, (str, Path)):
             raise ConfigurationError(
@@ -308,7 +309,8 @@ class SQLDataLoader(DataLoader[DataFrameContainer]):
         Raises:
             ConfigurationError: If query or connection is invalid
         """
-        super().__init__(config)
+        Identifiable.__init__(self)
+        Configurable.__init__(self, config)
         self.query = query
         self.params = params or {}
         
@@ -418,7 +420,8 @@ class URLDataLoader(DataLoader[Union[DataFrameContainer, DataContainer[Any]]]):
         Raises:
             ConfigurationError: If URL is invalid
         """
-        super().__init__(config)
+        Identifiable.__init__(self)
+        Configurable.__init__(self, config)
         self.url = url
         self.format = format
         self.headers = headers or {}

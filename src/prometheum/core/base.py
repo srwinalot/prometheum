@@ -266,34 +266,63 @@ class Pipeline(Identifiable, Configurable, Generic[T, U]):
     
     def __init__(
         self, 
-        steps: List[DataProcessor],
+        steps: Optional[List[Union[Tuple[str, DataProcessor], DataProcessor]]] = None,
         config: Optional[Dict[str, Any]] = None
     ) -> None:
         """Initialize the pipeline with processing steps.
         
         Args:
-            steps: Ordered list of processing steps
+            steps: Ordered list of processing steps (optional)
+                  Can be either DataProcessor instances or (name, processor) tuples
             config: Optional configuration dictionary
         """
-        super().__init__(config)
-        self._steps = steps
+        Identifiable.__init__(self)
+        Configurable.__init__(self, config)
+        
+        # Convert steps to list of (name, processor) tuples
+        self._steps = []
+        if steps:
+            for i, step in enumerate(steps):
+                if isinstance(step, tuple) and len(step) == 2 and isinstance(step[1], DataProcessor):
+                    name, processor = step
+                    self._steps.append((name, processor))
+                elif isinstance(step, DataProcessor):
+                    name = f"step_{i}"
+                    self._steps.append((name, step))
+                else:
+                    raise ValueError(f"Invalid step type: {type(step)}. Must be a DataProcessor or (name, DataProcessor) tuple.")
     
     @property
-    def steps(self) -> List[DataProcessor]:
+    def steps(self) -> List[Tuple[str, DataProcessor]]:
         """Get the pipeline steps.
         
         Returns:
-            List[DataProcessor]: The current pipeline steps
+            List[Tuple[str, DataProcessor]]: The current pipeline steps with names
         """
         return self._steps
+        
+    @property
+    def processors(self) -> List[DataProcessor]:
+        """Get just the processor instances from the steps.
+        
+        Returns:
+            List[DataProcessor]: The current processor instances
+        """
+        return [processor for _, processor in self._steps]
     
-    def add_step(self, step: DataProcessor) -> None:
+    def add_step(self, step: Union[Tuple[str, DataProcessor], DataProcessor]) -> None:
         """Add a step to the end of the pipeline.
         
         Args:
-            step: The processor to add
+            step: The processor to add, can be a DataProcessor or (name, processor) tuple
         """
-        self._steps.append(step)
+        if isinstance(step, tuple) and len(step) == 2 and isinstance(step[1], DataProcessor):
+            self._steps.append(step)
+        elif isinstance(step, DataProcessor):
+            name = f"step_{len(self._steps)}"
+            self._steps.append((name, step))
+        else:
+            raise ValueError(f"Invalid step type: {type(step)}. Must be a DataProcessor or (name, DataProcessor) tuple.")
     
     def process(self, data: Any) -> Any:
         """Process data through the pipeline.
@@ -308,8 +337,21 @@ class Pipeline(Identifiable, Configurable, Generic[T, U]):
             PipelineError: If any step fails
         """
         current_data = data
-        for step in self._steps:
-            current_data = step.process(current_data)
+        for step_name, processor in self._steps:
+            try:
+                current_data = processor.process(current_data)
+            except Exception as e:
+                # Wrap the original exception with step information
+                if not isinstance(e, ProcessingError):
+                    e = ProcessingError(f"Processing error in step '{step_name}'", details={"original_error": str(e)})
+                raise PipelineError(
+                    f"Pipeline processing failed at step '{step_name}'",
+                    details={
+                        "step": step_name,
+                        "error": str(e),
+                        "details": getattr(e, "details", {})
+                    }
+                ) from e
         return current_data
 
 

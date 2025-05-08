@@ -7,7 +7,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import router
+from .routes import router, backup
 from .dependencies import get_health_monitor
 from ..utils.config import load_config
 
@@ -38,6 +38,7 @@ def create_app() -> FastAPI:
     
     # Include main router
     app.include_router(router)
+    app.include_router(backup.router, prefix="/api/backup", tags=["Backup"])
     
     # Startup and shutdown events
     @app.on_event("startup")

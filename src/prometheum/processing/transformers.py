@@ -101,7 +101,7 @@ class ColumnSelector(DataTransformer):
 class MissingValueHandler(DataTransformer):
     """Transformer that handles missing values in a DataFrame."""
     
-    def __init__(
+def __init__(
         self,
         strategy: str = "mean",
         fill_value: Optional[Any] = None,
@@ -120,7 +120,7 @@ class MissingValueHandler(DataTransformer):
         Raises:
             ValueError: If strategy is invalid
         """
-        super().__init__(config)
+        DataTransformer.__init__(self, config)  # This properly initializes the inheritance chain
         
         valid_strategies = ['mean', 'median', 'mode', 'constant', 'ffill', 'bfill']
         if strategy not in valid_strategies:

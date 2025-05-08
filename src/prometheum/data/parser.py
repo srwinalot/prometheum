@@ -13,9 +13,9 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union,
 import numpy as np
 import pandas as pd
 import pydantic
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
-from prometheum.core.base import DataContainer, DataFrameContainer, DataProcessor
+from prometheum.core.base import DataContainer, DataFrameContainer, DataProcessor, Identifiable, Configurable
 from prometheum.core.exceptions import ProcessingError, ValidationError
 
 
@@ -85,13 +85,13 @@ class ColumnSchema(BaseModel):
         """Pydantic configuration."""
         extra = "forbid"
     
-    @validator("min_value", "max_value")
-    def check_value_type(cls, v, values):
+    @field_validator("min_value", "max_value")
+    def check_value_type(cls, v, info):
         """Validate min_value and max_value types match data_type.
         
         Args:
             v: The value to validate
-            values: Previously validated values
+            info: Field validation info containing data and context 
             
         Returns:
             Any: The validated value
@@ -102,7 +102,9 @@ class ColumnSchema(BaseModel):
         if v is None:
             return v
             
-        data_type = values.get("data_type")
+        # Access values from the model data
+        data = info.data
+        data_type = data.get("data_type") if data else None
         if data_type in (DataType.INTEGER, DataType.FLOAT):
             if not isinstance(v, (int, float)):
                 raise ValueError(f"min_value/max_value must be numeric for {data_type}")
@@ -526,15 +528,23 @@ class SchemaValidator(DataProcessor):
             raise_on_error: Whether to raise an exception on validation failure
             config: Optional configuration parameters
         """
-        super().__init__(config)
+        Identifiable.__init__(self)
+        Configurable.__init__(self, config)
         self.schema = schema
         self.raise_on_error = raise_on_error
-        self.validators = {}
+        self.validators = self._create_validators()
+    
+    def _create_validators(self) -> Dict[str, List[DataValidator]]:
+        """Create validators for all columns in the schema.
         
-        # Create validators for each column
-        for column_schema in schema.columns:
+        Returns:
+            Dict[str, List[DataValidator]]: Dictionary mapping column names to validator lists
+        """
+        validators = {}
+        for column_schema in self.schema.columns:
             column_validators = self._create_validators_for_column(column_schema)
-            self.validators[column_schema.name] = column_validators
+            validators[column_schema.name] = column_validators
+        return validators
     
     def _create_validators_for_column(self, column_schema: ColumnSchema) -> List[DataValidator]:
         """Create validators for a column based on its schema.
@@ -592,7 +602,7 @@ class SchemaValidator(DataProcessor):
         Raises:
             ValidationError: If validation fails and raise_on_error is True
         """
-        df = data.data
+        df = data.data.copy()  # Make a copy to avoid modifying the original
         errors = []
         
         # Validate column existence
@@ -630,27 +640,25 @@ class SchemaValidator(DataProcessor):
                 if not is_valid:
                     errors.extend(validator_errors)
         
-        # Handle validation errors
-        if errors and self.raise_on_error:
-            error_details = {
-                "schema": self.schema.to_dict(),
-                "error_count": len(errors),
-                "errors": errors[:10]  # Limit to first 10 errors
-            }
-            raise ValidationError(
-                f"Schema validation failed with {len(errors)} errors",
-                details=error_details
-            )
-            
         # Add validation result to metadata
         validation_metadata = {
             "schema_validated": True,
-            "validation_passed": not errors,
+            "validation_passed": len(errors) == 0,
             "error_count": len(errors)
         }
         
-        if errors and not self.raise_on_error:
+        if errors:
             validation_metadata["errors"] = errors[:10]  # Limit to first 10 errors
+            if self.raise_on_error:
+                error_details = {
+                    "schema": self.schema.model_dump() if hasattr(self.schema, 'model_dump') else self.schema.dict(),
+                    "error_count": len(errors),
+                    "errors": errors[:10]
+                }
+                raise ValidationError(
+                    f"Schema validation failed with {len(errors)} errors",
+                    details=error_details
+                )
             
         # Create a new container with updated metadata
         new_metadata = {**data.metadata, **validation_metadata}
@@ -676,7 +684,8 @@ class TypeConverter(DataProcessor):
         Raises:
             ConfigurationError: If errors option is invalid
         """
-        super().__init__(config)
+        Identifiable.__init__(self)
+        Configurable.__init__(self, config)
         self.column_types = column_types
         
         if errors not in ("raise", "ignore", "coerce"):
@@ -798,7 +807,8 @@ class DataParser(DataProcessor):
             errors: How to handle conversion errors ('raise', 'ignore', 'coerce')
             config: Optional configuration parameters
         """
-        super().__init__(config)
+        Identifiable.__init__(self)
+        Configurable.__init__(self, config)
         self.schema = schema
         self.convert_types = convert_types
         self.validate = validate
@@ -958,7 +968,8 @@ class DataProfiler(DataProcessor):
             include_correlations: Whether to include correlation matrix
             config: Optional configuration parameters
         """
-        super().__init__(config)
+        Identifiable.__init__(self)
+        Configurable.__init__(self, config)
         self.include_histograms = include_histograms
         self.include_correlations = include_correlations
     
