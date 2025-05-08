@@ -10,6 +10,9 @@ A comprehensive Network Attached Storage solution that can be deployed on router
 - **Self-Hosted Services**: Keep your data under your control and off the cloud
 - **Containerized Applications**: Run additional services with Podman containerization
 - **Scalable Architecture**: Scale based on your hardware resources
+- **Storage Health Monitoring**: Proactive disk health monitoring with SMART data analysis
+- **Predictive Failure Analysis**: ML-based prediction of storage device failures before they occur
+- **Performance Optimization**: Intelligent storage performance monitoring and recommendations
 
 ## System Requirements
 
@@ -39,6 +42,18 @@ prometheum/
 │   ├── install/                # Installation scripts
 │   ├── backup/                 # Backup service scripts
 │   └── update/                 # System update scripts
+├── src/                        # Source code
+│   ├── prometheum/             # Core Prometheum codebase
+│       ├── api/                # API implementation
+│       │   └── routes/         # API routes including health endpoints
+│       ├── storage/            # Storage subsystem
+│       │   ├── health.py       # Storage health monitoring
+│       │   └── health_monitor.py # Integrated health monitoring system
+│       └── ml/                 # Machine Learning subsystem
+│           ├── config.py       # ML configuration management
+│           ├── features.py     # Feature extraction for ML
+│           ├── predictor.py    # ML prediction models
+│           └── trainer.py      # ML model training
 ├── services/                   # Core services
 │   ├── api/                    # System API
 │   ├── web/                    # Web interface
@@ -143,6 +158,25 @@ The processing module includes data transformation and pipeline tools:
 
 - **Transformers**: `StandardScaler`, `MinMaxScaler`, `MissingValueHandler`, `OneHotEncoder`, `ColumnSelector`
 - **Pipeline**: `Pipeline`, `PipelineBuilder`, `PipelineStep`
+
+### Storage Health Module
+
+The storage health system provides comprehensive monitoring and analysis:
+
+- **Health Monitoring**: Collect and analyze SMART data from storage devices
+- **Performance Tracking**: Monitor and optimize storage performance metrics
+- **Error Detection**: Identify and report potential storage issues
+- **Alert Management**: Configure and manage storage health alerts
+- **Pool Monitoring**: Monitor health of storage pools and volumes
+
+### Machine Learning Module
+
+The ML subsystem provides predictive analytics for storage health:
+
+- **Feature Extraction**: Extract relevant features from storage metrics
+- **Model Training**: Train models to predict storage device failures
+- **Predictive Analysis**: Forecast potential storage issues before they occur
+- **Configuration Management**: Customize ML parameters for different environments
 
 ## Development
 
